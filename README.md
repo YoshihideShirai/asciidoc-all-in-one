@@ -22,6 +22,7 @@ Ideal for:
 - Updates the preview from the unsaved editor buffer.
 - Renders AsciiDoc inside VS Code with Asciidoctor.js.
 - Supports MathJax for AsciiDoc `stem` blocks and `latexmath` expressions.
+- Uses the [`antora/antora-ui-default`](https://gitlab.com/antora/antora-ui-default) look and bundled CSS as the basis for the preview appearance.
 - Numbers figure, table, and equation captions with chapter-aware prefixes.
 - Renders `emoji:name[]` inline macros as local Unicode emoji.
 - Converts Kroki-compatible diagram syntax with `asciidoctor-kroki-embedded`, then draws Mermaid, PlantUML, Nomnoml, Vega, Vega-Lite, WaveDrom, and Bytefield diagrams from bundled local assets.
@@ -225,7 +226,7 @@ npm test
 
 ## Bundled Licenses
 
-The bundled preview stylesheet is adapted from the Antora Default UI project and keeps its MPL-2.0 license notice in `media/antora-default-preview.css`.
+The bundled preview stylesheet is adapted from [`antora/antora-ui-default`](https://gitlab.com/antora/antora-ui-default) and keeps its MPL-2.0 license notice in `media/antora-default-preview.css`.
 
 Bundled MathJax assets keep Apache-2.0 license copies in `media/mathjax/LICENSE` and `media/mathjax-newcm/LICENSE`.
 
