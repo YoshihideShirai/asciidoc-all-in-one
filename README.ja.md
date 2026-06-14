@@ -50,12 +50,12 @@ AsciiDoc Zero-Network Preview は独自の `asciidoc` 言語定義や TextMate g
 
 プレビューでは、各ドキュメントの変換前に次の Asciidoctor.js 拡張を登録します。
 
-| 拡張 | 構文 / 対象 | 役割 |
-| --- | --- | --- |
-| Kroki embedded 図表プロセッサ | `[mermaid]`、`[plantuml]`、`[nomnoml]`、`[vega]`、`[vegalite]`、`[wavedrom]`、`[bytefield]` と、`mermaid::path[]` などの対応するブロックマクロ | `asciidoctor-kroki-embedded` により、対応する Kroki 互換ブロックとローカルファイルマクロを非実行の Webview 描画対象へ変換します。 |
-| source 言語図表フォールバック | `[source,mermaid]`、`[source,nomnoml]` などの source listing ブロック | 対応する図表言語のハイライト済み source listing を同じローカル描画対象へ書き換えます。 |
-| 絵文字インラインマクロプロセッサ | `emoji:name[]` | `asciidoctor-emoji` 互換のインラインマクロをローカル Unicode 絵文字として表示します。 |
-| 番号付きキャプションツリープロセッサ | image、table、stem ブロック | `asciidoctor-numbered-captions` による章番号付きキャプション採番を適用します。 |
+| 拡張 | パッケージ / 配布元 | 構文 / 対象 | 役割 |
+| --- | --- | --- | --- |
+| Kroki embedded 図表プロセッサ | [`asciidoctor-kroki-embedded`](https://github.com/YoshihideShirai/asciidoctor-kroki-embedded) | `[mermaid]`、`[plantuml]`、`[nomnoml]`、`[vega]`、`[vegalite]`、`[wavedrom]`、`[bytefield]` と、`mermaid::path[]` などの対応するブロックマクロ | 対応する Kroki 互換ブロックとローカルファイルマクロを非実行の Webview 描画対象へ変換します。 |
+| source 言語図表フォールバック | この拡張に内蔵 | `[source,mermaid]`、`[source,nomnoml]` などの source listing ブロック | 対応する図表言語のハイライト済み source listing を同じローカル描画対象へ書き換えます。 |
+| 絵文字インラインマクロプロセッサ | [`asciidoctor-emoji`](https://github.com/mogztter/asciidoctor-emoji) 互換 | `emoji:name[]` | 互換インラインマクロをローカル Unicode 絵文字として表示します。 |
+| 番号付きキャプションツリープロセッサ | [`asciidoctor-numbered-captions`](https://github.com/YoshihideShirai/asciidoctor-numbered-captions) | image、table、stem ブロック | 章番号付きキャプション採番を適用します。 |
 
 ## Getting Started
 

@@ -50,12 +50,12 @@ AsciiDoc Zero-Network Preview does not contribute its own `asciidoc` language de
 
 The preview registers these Asciidoctor.js extensions before converting each document:
 
-| Extension | Syntax / target | Purpose |
-| --- | --- | --- |
-| Kroki embedded diagram processors | `[mermaid]`, `[plantuml]`, `[nomnoml]`, `[vega]`, `[vegalite]`, `[wavedrom]`, `[bytefield]`, plus matching block macros such as `mermaid::path[]` | Uses `asciidoctor-kroki-embedded` to convert supported Kroki-compatible blocks and local file macros into inert Webview render targets. |
-| Source-language diagram fallback | `[source,mermaid]`, `[source,nomnoml]`, and matching source listing blocks | Rewrites highlighted source listings for supported diagram languages into the same local render targets. |
-| Emoji inline macro processor | `emoji:name[]` | Renders `asciidoctor-emoji` compatible inline macros as local Unicode emoji. |
-| Numbered captions tree processor | image, table, and stem blocks | Applies `asciidoctor-numbered-captions` chapter-aware caption numbering. |
+| Extension | Package / source | Syntax / target | Purpose |
+| --- | --- | --- | --- |
+| Kroki embedded diagram processors | [`asciidoctor-kroki-embedded`](https://github.com/YoshihideShirai/asciidoctor-kroki-embedded) | `[mermaid]`, `[plantuml]`, `[nomnoml]`, `[vega]`, `[vegalite]`, `[wavedrom]`, `[bytefield]`, plus matching block macros such as `mermaid::path[]` | Converts supported Kroki-compatible blocks and local file macros into inert Webview render targets. |
+| Source-language diagram fallback | Built in | `[source,mermaid]`, `[source,nomnoml]`, and matching source listing blocks | Rewrites highlighted source listings for supported diagram languages into the same local render targets. |
+| Emoji inline macro processor | [`asciidoctor-emoji`](https://github.com/mogztter/asciidoctor-emoji) compatible | `emoji:name[]` | Renders compatible inline macros as local Unicode emoji. |
+| Numbered captions tree processor | [`asciidoctor-numbered-captions`](https://github.com/YoshihideShirai/asciidoctor-numbered-captions) | image, table, and stem blocks | Applies chapter-aware caption numbering. |
 
 ## Getting Started
 
