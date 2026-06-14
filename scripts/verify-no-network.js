@@ -17,6 +17,7 @@ const allowedRuntimeDependencies = new Set([
 	'asciidoctor-emoji',
 	'asciidoctor-kroki-embedded',
 	'asciidoctor-numbered-captions',
+	'mathjax',
 ]);
 
 const blockedPatterns = [
