@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { emojiMap } from './emoji-map';
@@ -6,6 +5,7 @@ import { emojiMap } from './emoji-map';
 const previewPanels = new Map<string, AsciiDocPreviewPanel>();
 let outputChannel: vscode.OutputChannel | undefined;
 let asciidoctor: AsciiDoctorProcessor | undefined;
+let krokiEmbedded: KrokiEmbeddedExtension | undefined;
 const diagramBlockNames = ['mermaid', 'plantuml', 'nomnoml', 'vega', 'vegalite', 'wavedrom', 'bytefield'];
 const livePreviewUpdateDelayMs = 150;
 const configurationSection = 'asciidoc-local-preview';
@@ -22,6 +22,15 @@ type AsciiDoctorFactory = () => AsciiDoctorProcessor;
 type NumberedCaptionsExtension = {
 	register(registry: AsciiDoctorExtensionRegistry, options?: Record<string, unknown>): void;
 };
+type KrokiEmbeddedExtension = {
+	register(registry: AsciiDoctorExtensionRegistry, options?: Record<string, unknown>): void;
+	defaultRenderer(args: {
+		diagramType: string;
+		source: string;
+		attrs: Record<string, string>;
+		options?: Record<string, unknown>;
+	}): string;
+};
 type AsciiDoctorExtensionRegistry = {
 	preprocessor(callback: (this: any) => void): void;
 	treeProcessor(callback: (this: any) => void): void;
@@ -30,9 +39,10 @@ type AsciiDoctorExtensionRegistry = {
 	inlineMacro(name: string, callback: (this: any) => void): void;
 };
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	outputChannel = vscode.window.createOutputChannel('AsciiDoc Zero-Network Preview');
 	trace('activate');
+	krokiEmbedded = await loadKrokiEmbedded();
 
 	context.subscriptions.push(
 		outputChannel,
@@ -57,22 +67,18 @@ export function activate(context: vscode.ExtensionContext) {
 function createAsciiDocExtensions() {
 	const registry = getAsciiDoctor().Extensions.create();
 
-	registry.preprocessor(function (this: any) {
-		this.process(function (_document: any, reader: any) {
-			return reader.pushInclude(rewriteLiteralDiagramBlockStyles(reader.readLines()));
-		});
-	});
-
-	for (const diagramType of diagramBlockNames) {
-		registerDiagramBlock(registry, diagramType, 'listing');
-		registerDiagramBlock(registry, `${diagramType}literal`, 'literal', diagramType);
-		registerDiagramMacro(registry, diagramType);
-	}
-
+	registerKrokiEmbedded(registry);
 	registerEmojiMacro(registry);
 	registerNumberedCaptions(registry);
 
 	return registry;
+}
+
+function registerKrokiEmbedded(registry: AsciiDoctorExtensionRegistry) {
+	getKrokiEmbedded().register(registry, {
+		diagramNames: diagramBlockNames,
+		defaultFormat: 'svg',
+	});
 }
 
 function registerNumberedCaptions(registry: AsciiDoctorExtensionRegistry) {
@@ -80,29 +86,6 @@ function registerNumberedCaptions(registry: AsciiDoctorExtensionRegistry) {
 
 	numberedCaptions.register(registry, {
 		defaultNumbering: 'chaptered',
-	});
-}
-
-function registerDiagramBlock(registry: AsciiDoctorExtensionRegistry, blockName: string, context: string, diagramType = blockName) {
-	registry.block(blockName, function (this: any) {
-		this.onContext(context);
-		this.process(function (this: any, parent: any, reader: any) {
-			const source = reader.getLines().join('\n');
-
-			return this.createBlock(parent, 'pass', renderDiagramBlock(diagramType, source));
-		});
-	});
-}
-
-function registerDiagramMacro(registry: AsciiDoctorExtensionRegistry, diagramType: string) {
-	registry.blockMacro(diagramType, function (this: any) {
-		this.process(function (this: any, parent: any, target: string) {
-			const source = readLocalDiagramSource(diagramType, parent.getDocument().getBaseDir(), target);
-
-			return this.createBlock(parent, 'pass', source.ok
-				? renderDiagramBlock(diagramType, source.value)
-				: renderDiagramError(diagramType, source.value));
-		});
 	});
 }
 
@@ -115,21 +98,6 @@ function registerEmojiMacro(registry: AsciiDoctorExtensionRegistry) {
 			return this.createInlinePass(parent, emoji);
 		});
 	});
-}
-
-function rewriteLiteralDiagramBlockStyles(lines: string[]): string[] {
-	const rewritten = [...lines];
-
-	for (let index = 0; index < rewritten.length - 1; index += 1) {
-		for (const diagramType of diagramBlockNames) {
-			const stylePattern = new RegExp(`^\\[${diagramType}(?=[,\\]])`);
-			if (stylePattern.test(rewritten[index].trim()) && rewritten[index + 1].trim() === '....') {
-				rewritten[index] = rewritten[index].replace(`[${diagramType}`, `[${diagramType}literal`);
-			}
-		}
-	}
-
-	return rewritten;
 }
 
 export function deactivate() {
@@ -149,6 +117,24 @@ function getAsciiDoctor(): AsciiDoctorProcessor {
 	asciidoctor = asciidoctorFactory();
 
 	return asciidoctor;
+}
+
+async function loadKrokiEmbedded(): Promise<KrokiEmbeddedExtension> {
+	const imported = await import('asciidoctor-kroki-embedded');
+
+	if (typeof imported.register !== 'function' || typeof imported.defaultRenderer !== 'function') {
+		throw new Error('asciidoctor-kroki-embedded did not expose the expected register/defaultRenderer API.');
+	}
+
+	return imported;
+}
+
+function getKrokiEmbedded(): KrokiEmbeddedExtension {
+	if (!krokiEmbedded) {
+		throw new Error('asciidoctor-kroki-embedded has not been loaded yet.');
+	}
+
+	return krokiEmbedded;
 }
 
 function openPreview(extensionUri: vscode.Uri) {
@@ -223,14 +209,14 @@ function getTraceDocumentDetails(document: vscode.TextDocument): Record<string, 
 
 function countPreviewBlocks(html: string): Record<string, number> {
 	return {
-		mermaid: countOccurrences(html, 'class="mermaid"'),
-		plantuml: countOccurrences(html, 'plantuml-diagram'),
+		mermaid: countOccurrences(html, 'kroki-embedded-mermaid') + countOccurrences(html, 'class="mermaid"'),
+		plantuml: countOccurrences(html, 'kroki-embedded-plantuml') + countOccurrences(html, 'plantuml-diagram'),
 		mathStem: countOccurrences(html, 'class="stem"') + countOccurrences(html, 'class="inline-stem"'),
-		nomnoml: countOccurrences(html, 'nomnoml-diagram'),
-		vega: countOccurrences(html, 'vega-diagram'),
-		vegalite: countOccurrences(html, 'vegalite-diagram'),
-		wavedrom: countOccurrences(html, 'wavedrom-diagram'),
-		bytefield: countOccurrences(html, 'bytefield-diagram'),
+		nomnoml: countOccurrences(html, 'kroki-embedded-nomnoml') + countOccurrences(html, 'nomnoml-diagram'),
+		vega: countOccurrences(html, 'kroki-embedded-vega ') + countOccurrences(html, 'vega-diagram'),
+		vegalite: countOccurrences(html, 'kroki-embedded-vegalite') + countOccurrences(html, 'vegalite-diagram'),
+		wavedrom: countOccurrences(html, 'kroki-embedded-wavedrom') + countOccurrences(html, 'wavedrom-diagram'),
+		bytefield: countOccurrences(html, 'kroki-embedded-bytefield') + countOccurrences(html, 'bytefield-diagram'),
 	};
 }
 
@@ -385,7 +371,8 @@ class AsciiDocPreviewPanel {
 		}
 
 		.diagram-frame,
-		.mermaid-diagram {
+		.mermaid-diagram,
+		.kroki-embedded {
 			overflow: auto;
 			margin: 0 0 1rem;
 			padding: 16px;
@@ -395,19 +382,22 @@ class AsciiDocPreviewPanel {
 		}
 
 		.diagram-frame svg,
-		.mermaid-diagram svg {
+		.mermaid-diagram svg,
+		.kroki-embedded svg {
 			display: block;
 			max-width: 100%;
 			height: auto;
 			margin: 0 auto;
 		}
 
-		.diagram-source {
+		.diagram-source,
+		.kroki-embedded-source {
 			display: none;
 		}
 
 		.diagram-error,
-		.mermaid-error {
+		.mermaid-error,
+		.kroki-embedded-error {
 			white-space: pre-wrap;
 			color: var(--vscode-error-color);
 		}
@@ -458,6 +448,29 @@ class AsciiDocPreviewPanel {
 			});
 		});
 
+		const prepareKrokiEmbeddedDiagrams = () => {
+			for (const diagram of document.querySelectorAll('.kroki-embedded[data-diagram-type]')) {
+				const diagramType = diagram.dataset.diagramType || diagram.getAttribute('data-diagram-type');
+				const source = diagram.querySelector('.kroki-embedded-source');
+				const output = diagram.querySelector('.kroki-embedded-output');
+				if (!diagramType || !source || !output) {
+					continue;
+				}
+
+				diagram.classList.add(diagramType + '-diagram', 'diagram-frame');
+				source.classList.add(diagramType + '-source', 'diagram-source');
+				output.classList.add(diagramType + '-output');
+
+				if (diagramType === 'mermaid' && !output.querySelector('.mermaid')) {
+					const mermaidSource = document.createElement('pre');
+					mermaidSource.className = 'mermaid';
+					mermaidSource.textContent = source.textContent || '';
+					output.replaceChildren(mermaidSource);
+				}
+			}
+		};
+
+		prepareKrokiEmbeddedDiagrams();
 		tracePreview('webview.loaded', {
 			htmlLength: document.documentElement.outerHTML.length,
 			mermaid: document.querySelectorAll('.mermaid').length,
@@ -1033,34 +1046,19 @@ function rewriteSourceDiagramBlocks(html: string): string {
 
 	for (const diagramType of diagramBlockNames) {
 		const pattern = new RegExp(`<div class="listingblock">\\s*<div class="content">\\s*<pre class="highlight"><code class="language-${diagramType}" data-lang="${diagramType}">([\\s\\S]*?)<\\/code><\\/pre>\\s*<\\/div>\\s*<\\/div>`, 'gi');
-		rewritten = rewritten.replace(pattern, (_match: string, source: string) => renderDiagramBlock(diagramType, unescapeHtml(source)));
+		rewritten = rewritten.replace(pattern, (_match: string, source: string) => getKrokiEmbedded().defaultRenderer({
+			diagramType,
+			source: unescapeHtml(source),
+			attrs: {
+				format: 'svg',
+			},
+			options: {
+				defaultFormat: 'svg',
+			},
+		}));
 	}
 
 	return rewritten;
-}
-
-function renderDiagramBlock(diagramType: string, source: string): string {
-	if (diagramType === 'mermaid') {
-		return `<div class="mermaid-diagram"><pre class="mermaid">${escapeHtml(source)}</pre></div>`;
-	}
-
-	if (diagramType === 'plantuml') {
-		return renderClientSideDiagramBlock(diagramType, normalizePlantUmlSource(source));
-	}
-
-	if (['nomnoml', 'vega', 'vegalite', 'wavedrom', 'bytefield'].includes(diagramType)) {
-		return renderClientSideDiagramBlock(diagramType, source);
-	}
-
-	return renderDiagramError(diagramType, `Unsupported diagram type: ${diagramType}`);
-}
-
-function renderClientSideDiagramBlock(diagramType: string, source: string): string {
-	return `<div class="${escapeHtml(diagramType)}-diagram diagram-frame"><pre class="${escapeHtml(diagramType)}-source diagram-source">${escapeHtml(source)}</pre><div class="${escapeHtml(diagramType)}-output"></div></div>`;
-}
-
-function renderDiagramError(diagramType: string, message: string): string {
-	return `<div class="${escapeHtml(diagramType)}-diagram ${escapeHtml(diagramType)}-error diagram-error">${escapeHtml(message)}</div>`;
 }
 
 function renderEmoji(target: string, sizeAttr: string | undefined): string {
@@ -1104,41 +1102,6 @@ function unicodeCodepointsToText(value: string): string {
 		.split('-')
 		.map((codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 16)))
 		.join('');
-}
-
-function normalizePlantUmlSource(source: string): string {
-	const trimmed = source.trim();
-	if (/^@start\w*/i.test(trimmed)) {
-		return source;
-	}
-
-	return `@startuml\n${source}\n@enduml`;
-}
-
-function readLocalDiagramSource(diagramType: string, baseDir: string, target: string): { ok: true; value: string } | { ok: false; value: string } {
-	if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(target)) {
-		return { ok: false, value: `Remote ${diagramType} macro targets are disabled: ${target}` };
-	}
-
-	if (path.isAbsolute(target)) {
-		return { ok: false, value: `Absolute ${diagramType} macro targets are disabled: ${target}` };
-	}
-
-	const resolvedBaseDir = path.resolve(baseDir);
-	const resolvedTarget = path.resolve(resolvedBaseDir, target);
-	const relativeTarget = path.relative(resolvedBaseDir, resolvedTarget);
-
-	if (relativeTarget.startsWith('..') || path.isAbsolute(relativeTarget)) {
-		return { ok: false, value: `${diagramType} macro target is outside the document directory: ${target}` };
-	}
-
-	try {
-		return { ok: true, value: fs.readFileSync(resolvedTarget, 'utf8') };
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-
-		return { ok: false, value: `Unable to read ${diagramType} macro target ${target}: ${message}` };
-	}
 }
 
 function splitUriSuffix(value: string): { path: string; suffix: string } {

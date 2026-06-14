@@ -14,7 +14,10 @@ const scanTargets = [
 
 const allowedRuntimeDependencies = new Set([
 	'@asciidoctor/core',
+	'asciidoctor-emoji',
+	'asciidoctor-kroki-embedded',
 	'asciidoctor-numbered-captions',
+	'mathjax',
 ]);
 
 const blockedPatterns = [
@@ -319,6 +322,7 @@ function isAllowedPackageMetadataUrl(rel, blockedName, line) {
 		&& blockedName === 'remote URL literal in extension-controlled code'
 		&& (
 			/"url"\s*:\s*"https:\/\/github\.com\/YoshihideShirai\/asciidoc-local-preview-vscode\.git"/.test(line)
+			|| /"asciidoctor-kroki-embedded"\s*:\s*"git\+https:\/\/github\.com\/YoshihideShirai\/asciidoctor-kroki-embedded\.git"/.test(line)
 			|| /"asciidoctor-numbered-captions"\s*:\s*"git\+https:\/\/github\.com\/YoshihideShirai\/asciidoctor-numbered-captions\.git#v1\.0\.0"/.test(line)
 		);
 }
