@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-15
+
+- [#21](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/21) [codex] add zero-network review skill
+- [#22](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/22) [codex] Use asciidoctor-kroki-embedded for Kroki-compatible diagrams
+
 ## [0.1.0] - 2026-06-13
 
 - [#18](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/18) [codex] Allow workspace preview images
