@@ -22,6 +22,7 @@ Visual Studio Code で AsciiDoc をローカルプレビューするための拡
 - 編集中の未保存バッファをそのままプレビューに反映します。
 - Asciidoctor.js による AsciiDoc プレビューを VS Code 内で実行します。
 - MathJax による `stem` / `latexmath` の数式表示に対応しています。
+- プレビューの見た目と同梱 CSS は [`antora/antora-ui-default`](https://gitlab.com/antora/antora-ui-default) をベースにしています。
 - 図、表、式のキャプションを章番号付きで採番します。
 - `emoji:name[]` 形式の絵文字インラインマクロをローカルの Unicode 文字として表示します。
 - Kroki 互換の図表構文を `asciidoctor-kroki-embedded` で変換し、Mermaid、PlantUML、Nomnoml、Vega、Vega-Lite、WaveDrom、Bytefield の図表を同梱ローカルアセットで描画します。
@@ -225,7 +226,7 @@ npm test
 
 ## Bundled Licenses
 
-The bundled preview stylesheet is adapted from the Antora Default UI project and keeps its MPL-2.0 license notice in `media/antora-default-preview.css`.
+The bundled preview stylesheet is adapted from [`antora/antora-ui-default`](https://gitlab.com/antora/antora-ui-default) and keeps its MPL-2.0 license notice in `media/antora-default-preview.css`.
 
 Bundled MathJax assets keep Apache-2.0 license copies in `media/mathjax/LICENSE` and `media/mathjax-newcm/LICENSE`.
 
