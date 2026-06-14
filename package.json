@@ -148,26 +148,15 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@plantuml/core": "^1.2026.6",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.120.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "asciidoctor-emoji": "^0.5.0",
-    "bit-field": "^1.9.0",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.3",
-    "json5": "^2.2.3",
-    "mathjax": "^4.1.2",
-    "mermaid": "^11.15.0",
-    "nomnoml": "^1.7.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1",
-    "vega": "^6.2.0",
-    "vega-interpreter": "^2.2.1",
-    "vega-lite": "^6.4.3",
-    "wavedrom": "^3.6.1"
+    "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
     "@asciidoctor/core": "^2.2.7",
