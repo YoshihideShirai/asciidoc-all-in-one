@@ -171,6 +171,7 @@
   },
   "dependencies": {
     "@asciidoctor/core": "^2.2.7",
+    "asciidoctor-kroki-embedded": "git+https://github.com/YoshihideShirai/asciidoctor-kroki-embedded.git",
     "asciidoctor-numbered-captions": "git+https://github.com/YoshihideShirai/asciidoctor-numbered-captions.git#v1.0.0"
   }
 }
