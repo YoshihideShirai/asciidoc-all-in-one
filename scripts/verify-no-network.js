@@ -14,6 +14,7 @@ const scanTargets = [
 
 const allowedRuntimeDependencies = new Set([
 	'@asciidoctor/core',
+	'asciidoctor-emoji',
 	'asciidoctor-kroki-embedded',
 	'asciidoctor-numbered-captions',
 ]);
