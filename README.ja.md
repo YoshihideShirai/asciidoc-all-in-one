@@ -24,7 +24,7 @@ Visual Studio Code で AsciiDoc をローカルプレビューするための拡
 - MathJax による `stem` / `latexmath` の数式表示に対応しています。
 - 図、表、式のキャプションを章番号付きで採番します。
 - `emoji:name[]` 形式の絵文字インラインマクロをローカルの Unicode 文字として表示します。
-- Mermaid、PlantUML、Nomnoml、Vega、Vega-Lite、WaveDrom、Bytefield の図表をローカルアセットで描画します。
+- Kroki 互換の図表構文を `asciidoctor-kroki-embedded` で変換し、Mermaid、PlantUML、Nomnoml、Vega、Vega-Lite、WaveDrom、Bytefield の図表を同梱ローカルアセットで描画します。
 - 太字、斜体、等幅、リンク、見出し、箇条書きなど、よく使う AsciiDoc 編集コマンドを追加します。
 - AsciiDoc の言語サポート、文法、スニペット、ファイルアイコンは `asciidoctor/asciidoctor-vscode` に任せることで共存しやすくしています。
 - 画像ホストを明示的に許可しない限り、CDN、Kroki サーバー、外部画像読み込みに依存しないプレビュー経路を重視しています。
@@ -52,9 +52,8 @@ AsciiDoc Zero-Network Preview は独自の `asciidoc` 言語定義や TextMate g
 
 | 拡張 | 構文 / 対象 | 役割 |
 | --- | --- | --- |
-| 図表ブロックプロセッサ | `[mermaid]`、`[plantuml]`、`[nomnoml]`、`[vega]`、`[vegalite]`、`[wavedrom]`、`[bytefield]` | 図表ブロックをローカル Webview の描画対象へ変換します。 |
-| 図表ブロックマクロプロセッサ | `mermaid::path[]`、`plantuml::path[]` などの図表マクロ | ドキュメントディレクトリからの相対パスでローカル図表ソースを読み込みます。 |
-| 図表リテラル用プリプロセッサ | `[mermaid] ....` などのリテラル図表ブロック | リテラル図表ブロックも同じローカル描画パイプラインで扱えるように正規化します。 |
+| Kroki embedded 図表プロセッサ | `[mermaid]`、`[plantuml]`、`[nomnoml]`、`[vega]`、`[vegalite]`、`[wavedrom]`、`[bytefield]` と、`mermaid::path[]` などの対応するブロックマクロ | `asciidoctor-kroki-embedded` により、対応する Kroki 互換ブロックとローカルファイルマクロを非実行の Webview 描画対象へ変換します。 |
+| source 言語図表フォールバック | `[source,mermaid]`、`[source,nomnoml]` などの source listing ブロック | 対応する図表言語のハイライト済み source listing を同じローカル描画対象へ書き換えます。 |
 | 絵文字インラインマクロプロセッサ | `emoji:name[]` | `asciidoctor-emoji` 互換のインラインマクロをローカル Unicode 絵文字として表示します。 |
 | 番号付きキャプションツリープロセッサ | image、table、stem ブロック | `asciidoctor-numbered-captions` による章番号付きキャプション採番を適用します。 |
 
@@ -83,7 +82,7 @@ AsciiDoc Zero-Network Preview は独自の `asciidoc` 言語定義や TextMate g
 
 ## Supported Diagrams
 
-Kroki 互換のブロック記法で、次の図表をローカルに描画できます。
+Kroki 互換のブロック記法で、次の図表をローカルに描画できます。Asciidoctor 変換時には非実行の埋め込み図表ターゲットを生成し、Webview 側で対応済みの図表だけを同梱レンダラで描画します。
 
 ```asciidoc
 [mermaid]
@@ -113,7 +112,7 @@ Alice -> Bob : Hello
 - WaveDrom
 - Bytefield
 
-`mermaid::diagrams/system.mmd[]` や `plantuml::diagrams/sequence.puml[]` のようなローカルファイルマクロも利用できます。マクロの参照先は、ドキュメントと同じディレクトリ配下の相対パスに制限されます。
+`mermaid::diagrams/system.mmd[]` や `plantuml::diagrams/sequence.puml[]` のようなローカルファイルマクロも利用できます。マクロの参照先は、ドキュメントと同じディレクトリ配下の相対パスに制限されます。リモート URL、絶対パス、ドキュメントディレクトリ外へ抜けるパスは描画前に拒否されます。
 
 ## Math and Emoji
 
@@ -164,6 +163,7 @@ flowchart LR
 
 - Asciidoctor.js は拡張ホスト内で `safe: 'safe'` として実行されます。
 - 変換時に `allow-uri-read` は明示的に無効化されています。
+- Kroki 互換の図表ブロックとローカルファイルマクロは `asciidoctor-kroki-embedded` で処理され、Kroki サーバーへ接続せずに埋め込み HTML ターゲットを生成します。
 - リモート画像 URL は、完全一致ホストが `asciidoc-local-preview.allowedPreviewHosts` に含まれる場合を除き、プレビュー前に空のローカル data image に置き換えられます。
 - Webview の `localResourceRoots` は拡張ディレクトリ、workspace folders、現在のドキュメントディレクトリに限定されます。
 - CSS、MathJax、Mermaid、PlantUML、Nomnoml、Vega、Vega-Lite、WaveDrom、Bytefield は同梱された `media` 配下のファイルから読み込まれます。

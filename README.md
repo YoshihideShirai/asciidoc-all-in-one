@@ -24,7 +24,7 @@ Ideal for:
 - Supports MathJax for AsciiDoc `stem` blocks and `latexmath` expressions.
 - Numbers figure, table, and equation captions with chapter-aware prefixes.
 - Renders `emoji:name[]` inline macros as local Unicode emoji.
-- Draws Mermaid, PlantUML, Nomnoml, Vega, Vega-Lite, WaveDrom, and Bytefield diagrams from bundled local assets.
+- Converts Kroki-compatible diagram syntax with `asciidoctor-kroki-embedded`, then draws Mermaid, PlantUML, Nomnoml, Vega, Vega-Lite, WaveDrom, and Bytefield diagrams from bundled local assets.
 - Adds common AsciiDoc editing commands for bold, italic, monospace, links, headings, and unordered lists.
 - Coexists with `asciidoctor/asciidoctor-vscode` by leaving AsciiDoc language support, grammar, snippets, and file icons to that extension.
 - Keeps the preview path independent of CDNs, Kroki servers, and remote image loading unless image hosts are explicitly allowlisted.
@@ -52,9 +52,8 @@ The preview registers these Asciidoctor.js extensions before converting each doc
 
 | Extension | Syntax / target | Purpose |
 | --- | --- | --- |
-| Diagram block processor | `[mermaid]`, `[plantuml]`, `[nomnoml]`, `[vega]`, `[vegalite]`, `[wavedrom]`, `[bytefield]` | Converts diagram blocks into local Webview render targets. |
-| Diagram block macro processor | `mermaid::path[]`, `plantuml::path[]`, and matching diagram macros | Reads local diagram source files relative to the document directory. |
-| Diagram literal preprocessor | `[mermaid] ....` and matching diagram literal blocks | Normalizes literal diagram blocks so they render through the same local pipeline. |
+| Kroki embedded diagram processors | `[mermaid]`, `[plantuml]`, `[nomnoml]`, `[vega]`, `[vegalite]`, `[wavedrom]`, `[bytefield]`, plus matching block macros such as `mermaid::path[]` | Uses `asciidoctor-kroki-embedded` to convert supported Kroki-compatible blocks and local file macros into inert Webview render targets. |
+| Source-language diagram fallback | `[source,mermaid]`, `[source,nomnoml]`, and matching source listing blocks | Rewrites highlighted source listings for supported diagram languages into the same local render targets. |
 | Emoji inline macro processor | `emoji:name[]` | Renders `asciidoctor-emoji` compatible inline macros as local Unicode emoji. |
 | Numbered captions tree processor | image, table, and stem blocks | Applies `asciidoctor-numbered-captions` chapter-aware caption numbering. |
 
@@ -83,7 +82,7 @@ Host-only entries allow both `https` and `http` images for that exact host. Sche
 
 ## Supported Diagrams
 
-Use Kroki-compatible block syntax to render diagrams locally.
+Use Kroki-compatible block syntax to render diagrams locally. The Asciidoctor conversion step emits inert embedded diagram targets, and the Webview hydrates only the supported types with bundled renderers.
 
 ```asciidoc
 [mermaid]
@@ -113,7 +112,7 @@ Supported diagram types:
 - WaveDrom
 - Bytefield
 
-Local file macros such as `mermaid::diagrams/system.mmd[]` and `plantuml::diagrams/sequence.puml[]` are supported too. Macro targets must be relative paths inside the document directory.
+Local file macros such as `mermaid::diagrams/system.mmd[]` and `plantuml::diagrams/sequence.puml[]` are supported too. Macro targets must be relative paths inside the document directory. Remote URLs, absolute paths, and paths that escape the document directory are rejected before rendering.
 
 ## Math and Emoji
 
@@ -164,6 +163,7 @@ The preview path uses these controls:
 
 - Asciidoctor.js runs in the extension host with `safe: 'safe'`.
 - `allow-uri-read` is explicitly disabled during conversion.
+- Kroki-compatible diagram blocks and local file macros are handled by `asciidoctor-kroki-embedded`, which emits embedded HTML targets without contacting a Kroki server.
 - Remote image URLs are replaced with an empty local data image before rendering unless their exact host is listed in `asciidoc-local-preview.allowedPreviewHosts`.
 - Webview `localResourceRoots` are limited to the extension directory, workspace folders, and the current document directory.
 - CSS, MathJax, Mermaid, PlantUML, Nomnoml, Vega, Vega-Lite, WaveDrom, and Bytefield load from bundled files under `media`.
