@@ -3,7 +3,6 @@
 .vscode/**
 .vscode-test/**
 src/**
-out/emoji-map.js
 out/test/**
 out/**/*.map
 scripts/**
