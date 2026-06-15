@@ -131,6 +131,20 @@
             "pattern": "^(https?://)?[^\\s*/?#]+$"
           },
           "markdownDescription": "Hosts that remote preview images may load from. Entries may be host names like `example.com`; an `http` or `https` scheme may be included to restrict the allowed scheme. Empty by default, so remote images are blocked."
+        },
+        "asciidoc-local-preview.previewWidth": {
+          "type": "string",
+          "default": "default",
+          "scope": "resource",
+          "enum": [
+            "default",
+            "window"
+          ],
+          "enumDescriptions": [
+            "Use the bundled Antora-style reading width.",
+            "Expand the document preview to the full Webview width."
+          ],
+          "markdownDescription": "Controls the maximum width of the document preview. Use `default` for the bundled Antora-style reading width, or `window` to expand the document to the Webview width."
         }
       }
     }

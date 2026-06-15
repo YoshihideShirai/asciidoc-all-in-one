@@ -10,6 +10,8 @@ const diagramBlockNames = ['mermaid', 'plantuml', 'nomnoml', 'vega', 'vegalite',
 const livePreviewUpdateDelayMs = 150;
 const configurationSection = 'asciidoc-local-preview';
 const allowedPreviewHostsSetting = 'allowedPreviewHosts';
+const previewWidthSetting = 'previewWidth';
+type PreviewWidth = 'default' | 'window';
 
 type AsciiDoctorProcessor = {
 	convert(input: string | Buffer, options?: Record<string, unknown>): string | object;
@@ -54,6 +56,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerTextEditorCommand('asciidoc-local-preview.insertLink', (editor) => wrapSelection(editor, 'link:./path/to/document.adoc[', ']', 'link text')),
 		vscode.commands.registerTextEditorCommand('asciidoc-local-preview.insertHeading', (editor) => prefixSelectionLines(editor, '== ')),
 		vscode.commands.registerTextEditorCommand('asciidoc-local-preview.insertUnorderedList', (editor) => prefixSelectionLines(editor, '* ')),
+		vscode.workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration(`${configurationSection}.${previewWidthSetting}`)) {
+				trace('preview width configuration changed');
+				refreshVisiblePreviews();
+			}
+		}),
 		vscode.workspace.onDidChangeTextDocument((event) => {
 			const panel = previewPanels.get(event.document.uri.toString());
 			if (panel) {
@@ -379,6 +387,8 @@ class AsciiDocPreviewPanel {
 		const waveDromSkinScriptUri = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'wavedrom-skin-default.js'));
 		const waveDromScriptUri = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'wavedrom.min.js'));
 		const bitfieldScriptUri = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'bitfield.js'));
+		const previewWidth = getPreviewWidth(document);
+		const previewWidthClass = previewWidth === 'window' ? 'preview-width-window' : 'preview-width-default';
 
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -436,9 +446,16 @@ class AsciiDocPreviewPanel {
 			line-height: 1;
 			vertical-align: -0.125em;
 		}
+
+		body.preview-width-window {
+			--doc-margin: 0;
+			--doc-margin--desktop: 0;
+			--doc-max-width: none;
+			--doc-max-width--desktop: none;
+		}
 	</style>
 </head>
-<body>
+<body class="${previewWidthClass}">
 	<main>
 	<article class="doc asciidoc-preview">
 		${body}
@@ -1201,6 +1218,14 @@ function getAllowedRemoteImageSrc(src: string, allowedHosts: AllowedPreviewHost[
 	}
 
 	return undefined;
+}
+
+function getPreviewWidth(document: vscode.TextDocument): PreviewWidth {
+	const configured = vscode.workspace
+		.getConfiguration(configurationSection, document.uri)
+		.get<string>(previewWidthSetting, 'default');
+
+	return configured === 'window' ? 'window' : 'default';
 }
 
 function getAllowedPreviewHosts(): AllowedPreviewHost[] {

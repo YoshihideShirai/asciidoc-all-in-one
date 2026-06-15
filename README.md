@@ -66,6 +66,18 @@ The preview registers these Asciidoctor.js extensions before converting each doc
 
 The preview follows changes in the active editor. If the Webview needs to be redrawn manually, run **AsciiDoc: Refresh Preview**.
 
+## Preview Width
+
+The document preview uses the bundled Antora-style reading width by default. To expand the document area to the full VS Code Webview width, set `asciidoc-local-preview.previewWidth` to `window`:
+
+```json
+{
+  "asciidoc-local-preview.previewWidth": "window"
+}
+```
+
+Set it back to `default` to restore the constrained reading width.
+
 ## Antora Project Preview
 
 When the active document is inside an Antora component directory, the preview can resolve Antora module resources without contacting an Antora site generator or remote service. The extension detects a component root by looking for `antora.yml` and `modules/`, then resolves resources in the current component.
