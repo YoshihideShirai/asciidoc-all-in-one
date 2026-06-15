@@ -156,10 +156,12 @@
     "clean": "rm -rf out",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "verify:package-files": "vsce ls --no-dependencies | node scripts/verify-package-files.js",
     "verify:no-network": "node scripts/verify-no-network.js",
-    "pretest": "npm run compile && npm run bundle && npm run lint && npm run verify:no-network",
+    "pretest": "npm run compile && npm run bundle && npm run lint && npm run verify:no-network && npm run verify:package-files",
     "lint": "eslint src",
     "test": "vscode-test",
+    "prepackage:vsix": "npm run build && npm run verify:package-files",
     "package:vsix": "vsce package --out asciidoc-local-preview-${npm_package_version}.vsix"
   },
   "devDependencies": {
