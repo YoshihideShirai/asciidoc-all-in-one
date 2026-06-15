@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-15
+
+- [#31](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/31) [codex] Update preview when active editor changes
+- [#32](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/32) [codex] release 0.3.0
+- [#33](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/33) [codex] release 0.4.0
+- [#34](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/34) [codex] Update Asciidoctor core to v3
+
 ## [0.4.0] - 2026-06-15
 
 - [#32](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/32) [codex] release 0.3.0
