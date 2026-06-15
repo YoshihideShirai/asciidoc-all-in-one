@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-15
+
+- [#24](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/24) [codex] Document Antora UI Default styling
+- [#25](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/25) [codex] add cross-directory file reference support
+- [#26](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/26) [codex] CI VSIX GitHub
+
 ## [0.1.1] - 2026-06-15
 
 - [#21](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/21) [codex] add zero-network review skill
