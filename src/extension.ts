@@ -1,11 +1,10 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { emojiMap } from './emoji-map';
+import { Worker } from 'worker_threads';
 
 const previewPanels = new Map<string, AsciiDocPreviewPanel>();
 let activePreviewPanel: AsciiDocPreviewPanel | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
-let asciidoctor: AsciiDoctorProcessor | undefined;
 let krokiEmbedded: KrokiEmbeddedExtension | undefined;
 const diagramBlockNames = ['mermaid', 'plantuml', 'nomnoml', 'vega', 'vegalite', 'wavedrom', 'bytefield'];
 const livePreviewUpdateDelayMs = 150;
@@ -14,17 +13,6 @@ const allowedPreviewHostsSetting = 'allowedPreviewHosts';
 const previewWidthSetting = 'previewWidth';
 type PreviewWidth = 'default' | 'window';
 
-type AsciiDoctorProcessor = {
-	convert(input: string | Buffer, options?: Record<string, unknown>): string | object;
-	Extensions: {
-		create(): AsciiDoctorExtensionRegistry;
-	};
-};
-
-type AsciiDoctorFactory = () => AsciiDoctorProcessor;
-type NumberedCaptionsExtension = {
-	register(registry: AsciiDoctorExtensionRegistry, options?: Record<string, unknown>): void;
-};
 type KrokiEmbeddedExtension = {
 	register(registry: AsciiDoctorExtensionRegistry, options?: Record<string, unknown>): void;
 	defaultRenderer(args: {
@@ -34,12 +22,21 @@ type KrokiEmbeddedExtension = {
 		options?: Record<string, unknown>;
 	}): string;
 };
-type AsciiDoctorExtensionRegistry = {
-	preprocessor(callback: (this: any) => void): void;
-	treeProcessor(callback: (this: any) => void): void;
-	block(name: string, callback: (this: any) => void): void;
-	blockMacro(name: string, callback: (this: any) => void): void;
-	inlineMacro(name: string, callback: (this: any) => void): void;
+type AsciiDoctorExtensionRegistry = unknown;
+type WorkerConversionRequest = {
+	source: string;
+	baseDir?: string;
+	attributes: Record<string, string | boolean>;
+	diagramBlockNames: string[];
+	emojiMapPath: string;
+	extensionEntry: string;
+};
+type WorkerConversionResponse = {
+	html?: string;
+	error?: {
+		message: string;
+		stack?: string;
+	};
 };
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -94,59 +91,12 @@ const antoraFamilyDirectories: Record<string, string> = {
 	partial: 'partials',
 };
 
-function createAsciiDocExtensions() {
-	const registry = getAsciiDoctor().Extensions.create();
-
-	registerKrokiEmbedded(registry);
-	registerEmojiMacro(registry);
-	registerNumberedCaptions(registry);
-
-	return registry;
-}
-
-function registerKrokiEmbedded(registry: AsciiDoctorExtensionRegistry) {
-	getKrokiEmbedded().register(registry, {
-		diagramNames: diagramBlockNames,
-		defaultFormat: 'svg',
-	});
-}
-
-function registerNumberedCaptions(registry: AsciiDoctorExtensionRegistry) {
-	const numberedCaptions = require('asciidoctor-numbered-captions') as NumberedCaptionsExtension;
-
-	numberedCaptions.register(registry, {
-		defaultNumbering: 'chaptered',
-	});
-}
-
-function registerEmojiMacro(registry: AsciiDoctorExtensionRegistry) {
-	registry.inlineMacro('emoji', function (this: any) {
-		this.positionalAttributes('size');
-		this.process(function (this: any, parent: any, target: string, attrs: { size?: string }) {
-			const emoji = renderEmoji(target, attrs.size);
-
-			return this.createInlinePass(parent, emoji);
-		});
-	});
-}
-
 export function deactivate() {
 	trace('deactivate');
 	for (const panel of previewPanels.values()) {
 		panel.dispose();
 	}
 	previewPanels.clear();
-}
-
-function getAsciiDoctor(): AsciiDoctorProcessor {
-	if (asciidoctor) {
-		return asciidoctor;
-	}
-
-	const asciidoctorFactory = require('@asciidoctor/core') as AsciiDoctorFactory;
-	asciidoctor = asciidoctorFactory();
-
-	return asciidoctor;
 }
 
 async function loadKrokiEmbedded(): Promise<KrokiEmbeddedExtension> {
@@ -963,14 +913,14 @@ class AsciiDocPreviewPanel {
 }
 
 async function convertAsciiDoc(document: vscode.TextDocument, webview: vscode.Webview): Promise<string> {
+	let phase = 'prepare';
+
 	try {
-		const processor = getAsciiDoctor();
-		const extensionRegistry = createAsciiDocExtensions();
+		phase = 'read AsciiDoc source';
 		const source = await getAsciiDocSource(document);
-		const converted = processor.convert(source, {
-			safe: 'safe',
-			backend: 'html5',
-			standalone: false,
+		phase = 'convert AsciiDoc in worker';
+		const converted = await convertAsciiDocInWorker({
+			source,
 			base_dir: getAsciiDocBaseDir(document),
 			attributes: {
 				showtitle: true,
@@ -980,19 +930,185 @@ async function convertAsciiDoc(document: vscode.TextDocument, webview: vscode.We
 				'allow-uri-read': false,
 				...getDocumentAttributes(document),
 			},
-			extension_registry: extensionRegistry,
 		});
 
-		return rewriteSourceDiagramBlocks(await rewriteLocalImageUris(String(converted), document, webview));
+		phase = 'rewrite local image URIs';
+		const htmlWithImageUris = await rewriteLocalImageUris(String(converted), document, webview);
+		phase = 'rewrite source diagram blocks';
+
+		return rewriteSourceDiagramBlocks(htmlWithImageUris);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		const stack = getErrorStack(error);
 		trace('preview conversion failed', {
+			phase,
 			message,
-			stack: error instanceof Error ? error.stack : undefined,
+			stack,
 		});
 
-		return `<h1>Preview failed</h1><pre><code>${escapeHtml(message)}</code></pre>`;
+		return renderPreviewError(message, phase, stack);
 	}
+}
+
+async function convertAsciiDocInWorker(options: {
+	source: string;
+	base_dir?: string;
+	attributes: Record<string, string | boolean>;
+}): Promise<string> {
+	const request: WorkerConversionRequest = {
+		source: options.source,
+		baseDir: options.base_dir,
+		attributes: options.attributes,
+		diagramBlockNames,
+		emojiMapPath: path.join(__dirname, 'emoji-map.js'),
+		extensionEntry: __filename,
+	};
+
+	const response = await runAsciiDocWorker(request);
+	if (response.error) {
+		const error = new Error(response.error.message);
+		error.stack = response.error.stack;
+		throw error;
+	}
+
+	return response.html ?? '';
+}
+
+function runAsciiDocWorker(request: WorkerConversionRequest): Promise<WorkerConversionResponse> {
+	return new Promise((resolve, reject) => {
+		const worker = new Worker(getAsciiDocWorkerSource(), {
+			eval: true,
+			workerData: request,
+		});
+
+		worker.once('message', (message: WorkerConversionResponse) => {
+			resolve(message);
+		});
+		worker.once('error', reject);
+		worker.once('exit', (code) => {
+			if (code !== 0) {
+				reject(new Error(`AsciiDoc worker exited with code ${code}.`));
+			}
+		});
+	});
+}
+
+function getAsciiDocWorkerSource(): string {
+	return `
+const { workerData, parentPort } = require('worker_threads');
+const { createRequire } = require('module');
+const { pathToFileURL } = require('url');
+
+const requireFromExtension = createRequire(workerData.extensionEntry);
+
+function escapeHtml(value) {
+	return String(value)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function resolveEmojiSize(sizeAttr) {
+	const defaultSize = '24px';
+	const sizeMap = {
+		'1x': '17px',
+		lg: defaultSize,
+		'2x': '34px',
+		'3x': '50px',
+		'4x': '68px',
+		'5x': '85px',
+	};
+	const trimmed = typeof sizeAttr === 'string' ? sizeAttr.trim() : '';
+	if (!trimmed) {
+		return defaultSize;
+	}
+	if (/^\\d{1,3}px$/.test(trimmed)) {
+		return trimmed;
+	}
+	return sizeMap[trimmed] || defaultSize;
+}
+
+function unicodeCodepointsToText(value) {
+	return value
+		.split('-')
+		.map((codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 16)))
+		.join('');
+}
+
+function renderEmoji(emojiMap, target, sizeAttr) {
+	const unicode = emojiMap[target];
+	if (!unicode) {
+		return '<span class="emoji emoji-missing">[emoji ' + escapeHtml(target) + ' not found]</span>';
+	}
+	const label = escapeHtml(target);
+	const size = resolveEmojiSize(sizeAttr);
+	const emoji = escapeHtml(unicodeCodepointsToText(unicode));
+	return '<span class="emoji" role="img" aria-label="' + label + '" title="' + label + '" style="font-size: ' + size + ';">' + emoji + '</span>';
+}
+
+(async () => {
+	try {
+		const asciidoctor = requireFromExtension('@asciidoctor/core')();
+		const krokiEmbeddedPath = requireFromExtension.resolve('asciidoctor-kroki-embedded');
+		const krokiEmbedded = await import(pathToFileURL(krokiEmbeddedPath).href);
+		const numberedCaptions = requireFromExtension('asciidoctor-numbered-captions');
+		const { emojiMap } = require(workerData.emojiMapPath);
+		const registry = asciidoctor.Extensions.create();
+
+		krokiEmbedded.register(registry, {
+			diagramNames: workerData.diagramBlockNames,
+			defaultFormat: 'svg',
+		});
+		registry.inlineMacro('emoji', function () {
+			this.positionalAttributes('size');
+			this.process(function (parent, target, attrs) {
+				return this.createInlinePass(parent, renderEmoji(emojiMap, target, attrs && attrs.size));
+			});
+		});
+		numberedCaptions.register(registry, {
+			defaultNumbering: 'chaptered',
+		});
+
+		const html = asciidoctor.convert(workerData.source, {
+			safe: 'safe',
+			backend: 'html5',
+			standalone: false,
+			base_dir: workerData.baseDir,
+			attributes: workerData.attributes,
+			extension_registry: registry,
+		});
+		parentPort.postMessage({ html: String(html) });
+	} catch (error) {
+		parentPort.postMessage({
+			error: {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			},
+		});
+	}
+})();
+`;
+}
+
+function getErrorStack(error: unknown): string | undefined {
+	if (!(error instanceof Error)) {
+		return undefined;
+	}
+
+	try {
+		return error.stack;
+	} catch {
+		return undefined;
+	}
+}
+
+function renderPreviewError(message: string, phase: string, stack: string | undefined): string {
+	const stackLines = stack?.split('\n').slice(0, 12).join('\n');
+	const details = stackLines ? `\n\nPhase: ${phase}\n\n${stackLines}` : `\n\nPhase: ${phase}`;
+
+	return `<h1>Preview failed</h1><pre><code>${escapeHtml(`${message}${details}`)}</code></pre>`;
 }
 
 function getAsciiDocBaseDir(document: vscode.TextDocument): string | undefined {
@@ -1364,49 +1480,6 @@ function rewriteSourceDiagramBlocks(html: string): string {
 	}
 
 	return rewritten;
-}
-
-function renderEmoji(target: string, sizeAttr: string | undefined): string {
-	const unicode = emojiMap[target];
-	if (!unicode) {
-		return `<span class="emoji emoji-missing">[emoji ${escapeHtml(target)} not found]</span>`;
-	}
-
-	const label = escapeHtml(target);
-	const size = resolveEmojiSize(sizeAttr);
-	const emoji = escapeHtml(unicodeCodepointsToText(unicode));
-
-	return `<span class="emoji" role="img" aria-label="${label}" title="${label}" style="font-size: ${size};">${emoji}</span>`;
-}
-
-function resolveEmojiSize(sizeAttr: string | undefined): string {
-	const defaultSize = '24px';
-	const sizeMap: Record<string, string> = {
-		'1x': '17px',
-		lg: defaultSize,
-		'2x': '34px',
-		'3x': '50px',
-		'4x': '68px',
-		'5x': '85px',
-	};
-	const trimmed = sizeAttr?.trim();
-
-	if (!trimmed) {
-		return defaultSize;
-	}
-
-	if (/^\d{1,3}px$/.test(trimmed)) {
-		return trimmed;
-	}
-
-	return sizeMap[trimmed] ?? defaultSize;
-}
-
-function unicodeCodepointsToText(value: string): string {
-	return value
-		.split('-')
-		.map((codepoint) => String.fromCodePoint(Number.parseInt(codepoint, 16)))
-		.join('');
 }
 
 function splitUriSuffix(value: string): { path: string; suffix: string } {
