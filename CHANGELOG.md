@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-16
+
+- [#38](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/38) [codex] Remove unused AsciiDoc grammar
+- [#39](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/39) [codex] Update preview icons
+
 ## [0.5.1] - 2026-06-15
 
 - [#36](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/36) [codex] Fixed package runtime files
