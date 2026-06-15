@@ -66,6 +66,18 @@ AsciiDoc Zero-Network Preview は独自の `asciidoc` 言語定義や TextMate g
 
 プレビューは編集中の内容に追従します。必要な場合は **AsciiDoc: Refresh Preview** で Webview を再描画できます。
 
+## プレビュー幅
+
+ドキュメントのプレビューは、既定では同梱の Antora 風の読みやすい幅に制限されます。ドキュメント領域を VS Code Webview のウィンドウ幅まで広げるには、`asciidoc-local-preview.previewWidth` を `window` に設定します。
+
+```json
+{
+  "asciidoc-local-preview.previewWidth": "window"
+}
+```
+
+`default` に戻すと、幅を制限した既定の表示に戻ります。
+
 ## Antora プロジェクトのプレビュー
 
 開いているドキュメントが Antora component ディレクトリ内にある場合、Antora サイトジェネレーターやリモートサービスへ接続せずに、同じ component 内の Antora module resource を解決できます。拡張機能は `antora.yml` と `modules/` を持つディレクトリを component root として検出します。
