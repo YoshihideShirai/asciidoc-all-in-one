@@ -66,6 +66,21 @@ The preview registers these Asciidoctor.js extensions before converting each doc
 
 The preview follows changes in the active editor. If the Webview needs to be redrawn manually, run **AsciiDoc: Refresh Preview**.
 
+## Antora Project Preview
+
+When the active document is inside an Antora component directory, the preview can resolve Antora module resources without contacting an Antora site generator or remote service. The extension detects a component root by looking for `antora.yml` and `modules/`, then resolves resources in the current component.
+
+Supported preview references include:
+
+- `include::partial$name.adoc[]`
+- `include::example$name.adoc[]`
+- `include::page$name.adoc[]`
+- module-qualified resources such as `include::shared:page$name.adoc[]`
+- relative includes that stay inside the current Antora module, such as `include::../partials/name.adoc[]`
+- image resources such as `image::image$name.svg[]`, resolved from `assets/images`
+
+The repository includes a minimal sample at `examples/antora-preview/modules/ROOT/pages/index.adoc` that exercises partials, examples, relative includes, a second module, and an Antora image resource.
+
 ## Remote Image Hosts
 
 Remote images are blocked by default. To allow specific hosts in the preview, set `asciidoc-local-preview.allowedPreviewHosts` in VS Code settings:

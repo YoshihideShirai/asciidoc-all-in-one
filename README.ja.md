@@ -66,6 +66,21 @@ AsciiDoc Zero-Network Preview は独自の `asciidoc` 言語定義や TextMate g
 
 プレビューは編集中の内容に追従します。必要な場合は **AsciiDoc: Refresh Preview** で Webview を再描画できます。
 
+## Antora プロジェクトのプレビュー
+
+開いているドキュメントが Antora component ディレクトリ内にある場合、Antora サイトジェネレーターやリモートサービスへ接続せずに、同じ component 内の Antora module resource を解決できます。拡張機能は `antora.yml` と `modules/` を持つディレクトリを component root として検出します。
+
+プレビューで対応する参照例:
+
+- `include::partial$name.adoc[]`
+- `include::example$name.adoc[]`
+- `include::page$name.adoc[]`
+- `include::shared:page$name.adoc[]` のような module-qualified resource
+- `include::../partials/name.adoc[]` のように現在の Antora module 内に収まる相対 include
+- `assets/images` から解決する `image::image$name.svg[]` のような画像 resource
+
+リポジトリには、partials、examples、相対 include、別 module、Antora 画像 resource を確認できる最小サンプルとして `examples/antora-preview/modules/ROOT/pages/index.adoc` を同梱しています。
+
 ## リモート画像ホスト
 
 リモート画像は既定でブロックされます。プレビューで特定のホストだけ許可する場合は、VS Code 設定で `asciidoc-local-preview.allowedPreviewHosts` を指定します。
