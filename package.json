@@ -35,7 +35,10 @@
         "command": "asciidoc-local-preview.openPreview",
         "title": "Open Zero-Network Preview",
         "category": "AsciiDoc",
-        "icon": "$(open-preview)"
+        "icon": {
+          "light": "media/preview-shield-light.svg",
+          "dark": "media/preview-shield-dark.svg"
+        }
       },
       {
         "command": "asciidoc-local-preview.refreshPreview",

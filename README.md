@@ -61,8 +61,9 @@ The preview registers these Asciidoctor.js extensions before converting each doc
 ## Getting Started
 
 1. Open an AsciiDoc file in VS Code.
-2. Run **AsciiDoc: Open Zero-Network Preview** from the Command Palette.
-3. You can also open the preview from the editor title menu or editor context menu.
+2. Select the editor tab for the `.adoc`, `.ad`, `.asciidoc`, or `.asc` file you want to preview.
+3. Click the <img src="media/preview-shield-light.svg" width="16" height="16" alt="Open Zero-Network Preview icon"> preview icon in the editor title bar, or run **AsciiDoc: Open Zero-Network Preview** from the Command Palette.
+4. You can also open the preview from the editor context menu.
 
 The preview follows changes in the active editor. If the Webview needs to be redrawn manually, run **AsciiDoc: Refresh Preview**.
 

@@ -1,23 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="AsciiDoc Local Preview">
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="AsciiDoc Zero-Network Preview">
   <defs>
-    <linearGradient id="bg" x1="22" y1="10" x2="106" y2="118" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff1f63"/>
-      <stop offset="0.58" stop-color="#e40046"/>
-      <stop offset="1" stop-color="#aa0037"/>
+    <linearGradient id="bg" x1="18" y1="8" x2="111" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff2a66"/>
+      <stop offset="0.56" stop-color="#e40046"/>
+      <stop offset="1" stop-color="#9f0034"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#2a0010" flood-opacity=".28"/>
+    <filter id="shadow" x="-18%" y="-18%" width="136%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#2a0010" flood-opacity=".3"/>
     </filter>
   </defs>
-  <rect x="10" y="8" width="108" height="112" rx="25" fill="url(#bg)" filter="url(#shadow)"/>
-  <path fill="#fff" opacity=".12" d="M24 20h70c6.6 0 12 5.4 12 12v64c0 6.6-5.4 12-12 12H24z"/>
-  <g transform="translate(11.2 10.4) scale(3.3)">
+  <rect x="10" y="8" width="108" height="112" rx="24" fill="url(#bg)" filter="url(#shadow)"/>
+  <path fill="#fff" opacity=".13" d="M25 20h69c6.6 0 12 5.4 12 12v64c0 6.6-5.4 12-12 12H25z"/>
+  <g transform="translate(11.4 10.2) scale(3.18)">
     <path fill="#fff" d="M23.731 24.83a.589.589 0 0 1-.763-.337L16.724 9.269 13.93 15.99h1.833a.59.59 0 0 1-.024 1.18H8.9a.59.59 0 0 1 .024-1.18h3.727l0-.013L16.184 7.5a.591.591 0 0 1 .533-.363h0a.592.592 0 0 1 .557.366l6.785 16.546.009.021A.59.59 0 0 1 23.731 24.83Z"/>
     <path fill="#fff" d="M14.516 18.791H7.679a.59.59 0 0 0-.024 1.18H11L9.309 24.043a.59.59 0 0 0 1.085.464l0-.011 1.875-4.509.005-.016h2.215a.59.59 0 0 0 .023-1.18Z"/>
   </g>
   <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="76" y="74" width="27" height="20" rx="4" opacity=".82" stroke-width="4"/>
-    <path d="M84 100h11" opacity=".82" stroke-width="4"/>
-    <path d="M88 94v6" opacity=".82" stroke-width="4"/>
+    <rect x="73" y="72" width="33" height="22" rx="4.5" opacity=".9" stroke-width="4.4"/>
+    <path d="M84.5 101h10" opacity=".9" stroke-width="4.4"/>
+    <path d="M89.5 94v7" opacity=".9" stroke-width="4.4"/>
+    <path d="M97 83.5v-8l8-3.5 8 3.5v8c0 7.2-4 12.4-8 14-4-1.6-8-6.8-8-14Z" fill="#e40046" stroke-width="4.2"/>
+    <path d="M101.5 84.2l2.3 2.4 5-5.3" stroke-width="3.4"/>
   </g>
 </svg>
