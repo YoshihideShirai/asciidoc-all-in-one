@@ -6,7 +6,6 @@ const requiredFiles = [
 	'package.json',
 	'language-configuration.json',
 	'snippets/asciidoc.json',
-	'syntaxes/asciidoc.tmLanguage.json',
 	'out/extension.js',
 	'out/emoji-map.js',
 	'media/extension-icon.png',
