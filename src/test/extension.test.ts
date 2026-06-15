@@ -14,6 +14,28 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
 	});
 
+	test('Open preview command handles an existing incompatible Opal global', async () => {
+		(globalThis as typeof globalThis & { Opal?: unknown }).Opal = {
+			queue() {
+				// This mimics a pre-existing Opal runtime enough to trigger Asciidoctor 3 load conflicts.
+			},
+			loaded() {
+				return false;
+			},
+			modules: {},
+			config: {},
+			gvars: {},
+			nil: null,
+		};
+
+		const document = await vscode.workspace.openTextDocument({
+			content: '= Test\n\nHello from AsciiDoc.',
+			language: 'asciidoc',
+		});
+		await vscode.window.showTextDocument(document);
+		await vscode.commands.executeCommand('asciidoc-local-preview.openPreview');
+	});
+
 	test('Open preview command renders an Antora directory sample', async () => {
 		const sample = vscode.Uri.file(path.resolve(__dirname, '..', '..', 'examples', 'antora-preview', 'modules', 'ROOT', 'pages', 'index.adoc'));
 		const document = await vscode.workspace.openTextDocument(sample);
