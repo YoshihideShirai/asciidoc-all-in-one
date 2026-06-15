@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { emojiMap } from './emoji-map';
 
 const previewPanels = new Map<string, AsciiDocPreviewPanel>();
+let activePreviewPanel: AsciiDocPreviewPanel | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
 let asciidoctor: AsciiDoctorProcessor | undefined;
 let krokiEmbedded: KrokiEmbeddedExtension | undefined;
@@ -69,6 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			panel?.scheduleUpdate(event.document);
 		}),
+		vscode.window.onDidChangeActiveTextEditor((editor) => switchActivePreviewToEditor(editor)),
 	);
 }
 
@@ -178,13 +180,42 @@ function openPreview(extensionUri: vscode.Uri) {
 	const existing = previewPanels.get(key);
 	if (existing) {
 		trace('openPreview revealing existing panel', getTraceDocumentDetails(document));
+		activePreviewPanel = existing;
 		existing.reveal();
 		existing.update(document);
 		return;
 	}
 
 	const panel = new AsciiDocPreviewPanel(extensionUri, document);
+	activePreviewPanel = panel;
 	previewPanels.set(key, panel);
+}
+
+function switchActivePreviewToEditor(editor: vscode.TextEditor | undefined) {
+	const document = getAsciiDocDocument(editor);
+	if (!document) {
+		return;
+	}
+
+	const panel = activePreviewPanel ?? getSinglePreviewPanel();
+	if (!panel) {
+		return;
+	}
+
+	const existing = previewPanels.get(document.uri.toString());
+	if (existing && existing !== panel) {
+		activePreviewPanel = existing;
+		trace('active editor switched to document with existing preview', getTraceDocumentDetails(document));
+		existing.update(document);
+		return;
+	}
+
+	activePreviewPanel = panel;
+	panel.retarget(document);
+}
+
+function getSinglePreviewPanel(): AsciiDocPreviewPanel | undefined {
+	return previewPanels.size === 1 ? previewPanels.values().next().value : undefined;
 }
 
 function refreshVisiblePreviews() {
@@ -195,7 +226,10 @@ function refreshVisiblePreviews() {
 }
 
 function getActiveAsciiDocDocument(): vscode.TextDocument | undefined {
-	const editor = vscode.window.activeTextEditor;
+	return getAsciiDocDocument(vscode.window.activeTextEditor);
+}
+
+function getAsciiDocDocument(editor: vscode.TextEditor | undefined): vscode.TextDocument | undefined {
 	if (!editor) {
 		return undefined;
 	}
@@ -254,7 +288,7 @@ function countOccurrences(value: string, needle: string): number {
 
 class AsciiDocPreviewPanel {
 	private readonly panel: vscode.WebviewPanel;
-	private readonly documentUri: vscode.Uri;
+	private documentUri: vscode.Uri;
 	private readonly disposables: vscode.Disposable[] = [];
 	private document: vscode.TextDocument;
 	private pendingUpdate: ReturnType<typeof setTimeout> | undefined;
@@ -293,7 +327,35 @@ class AsciiDocPreviewPanel {
 
 	reveal() {
 		trace('preview panel reveal', { document: this.documentUri.toString() });
+		activePreviewPanel = this;
 		this.panel.reveal(vscode.ViewColumn.Beside);
+	}
+
+	retarget(document: vscode.TextDocument) {
+		const oldKey = this.documentUri.toString();
+		const newKey = document.uri.toString();
+		if (oldKey === newKey) {
+			this.update(document);
+			return;
+		}
+
+		trace('preview retargeted to active editor', {
+			from: oldKey,
+			to: newKey,
+			...getTraceDocumentDetails(document),
+		});
+		this.cancelPendingUpdate();
+		if (previewPanels.get(oldKey) === this) {
+			previewPanels.delete(oldKey);
+		}
+		this.documentUri = document.uri;
+		this.document = document;
+		this.panel.webview.options = {
+			enableScripts: true,
+			localResourceRoots: getLocalResourceRoots(this.extensionUri, document),
+		};
+		previewPanels.set(newKey, this);
+		this.update(document);
 	}
 
 	async update(document: vscode.TextDocument) {
@@ -355,6 +417,9 @@ class AsciiDocPreviewPanel {
 		this.disposed = true;
 		trace('preview panel disposed', { document: this.documentUri.toString() });
 		previewPanels.delete(this.documentUri.toString());
+		if (activePreviewPanel === this) {
+			activePreviewPanel = undefined;
+		}
 		this.cancelPendingUpdate();
 		this.panel.dispose();
 
