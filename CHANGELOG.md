@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-15
+
+- [#36](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/36) [codex] Fixed package runtime files
+
 ## [0.5.0] - 2026-06-15
 
 - [#31](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/31) [codex] Update preview when active editor changes
