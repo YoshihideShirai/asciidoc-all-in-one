@@ -11,6 +11,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - [#24](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/24) [codex] Document Antora UI Default styling
 - [#25](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/25) [codex] add cross-directory file reference support
 - [#26](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/26) [codex] CI VSIX GitHub
+- [#27](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/27) [codex] Create release PR for version 0.2.0
+- [#28](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/28) Fix release VSIX CI test runner
 
 ## [0.1.1] - 2026-06-15
 
