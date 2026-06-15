@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-15
+
+- [#30](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/30) Add configurable preview width
+- [#31](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/31) [codex] Update preview when active editor changes
+
 ## [0.2.0] - 2026-06-15
 
 - [#24](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/24) [codex] Document Antora UI Default styling
