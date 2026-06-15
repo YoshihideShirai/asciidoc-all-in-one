@@ -1,0 +1,4 @@
+[source,asciidoc]
+----
+Antora example include content.
+----

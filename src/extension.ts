@@ -64,6 +64,26 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 }
 
+type AntoraContext = {
+	componentRoot: string;
+	moduleName: string;
+	moduleRoot: string;
+};
+
+type AntoraResource = {
+	family: string;
+	moduleName: string;
+	resourcePath: string;
+};
+
+const antoraFamilyDirectories: Record<string, string> = {
+	attachment: 'attachments',
+	example: 'examples',
+	image: path.join('assets', 'images'),
+	page: 'pages',
+	partial: 'partials',
+};
+
 function createAsciiDocExtensions() {
 	const registry = getAsciiDoctor().Extensions.create();
 
@@ -268,7 +288,7 @@ class AsciiDocPreviewPanel {
 		this.panel.reveal(vscode.ViewColumn.Beside);
 	}
 
-	update(document: vscode.TextDocument) {
+	async update(document: vscode.TextDocument) {
 		if (document.uri.toString() !== this.documentUri.toString()) {
 			return;
 		}
@@ -277,12 +297,16 @@ class AsciiDocPreviewPanel {
 		this.document = document;
 		this.panel.title = `Preview: ${getDocumentTitle(document)}`;
 		this.renderSequence += 1;
-		const renderId = `${Date.now()}-${this.renderSequence}`;
+		const renderSequence = this.renderSequence;
+		const renderId = `${Date.now()}-${renderSequence}`;
 		trace('preview update start', {
 			renderId,
 			...getTraceDocumentDetails(document),
 		});
-		const body = this.renderBody(document);
+		const body = await this.renderBody(document);
+		if (this.disposed || document.uri.toString() !== this.documentUri.toString() || renderSequence !== this.renderSequence) {
+			return;
+		}
 		trace('preview body rendered', {
 			renderId,
 			bodyLength: body.length,
@@ -331,7 +355,7 @@ class AsciiDocPreviewPanel {
 		}
 	}
 
-	private renderBody(document: vscode.TextDocument): string {
+	private renderBody(document: vscode.TextDocument): Promise<string> {
 		return convertAsciiDoc(document, this.panel.webview);
 	}
 
@@ -856,26 +880,28 @@ class AsciiDocPreviewPanel {
 
 }
 
-function convertAsciiDoc(document: vscode.TextDocument, webview: vscode.Webview): string {
+async function convertAsciiDoc(document: vscode.TextDocument, webview: vscode.Webview): Promise<string> {
 	try {
 		const processor = getAsciiDoctor();
 		const extensionRegistry = createAsciiDocExtensions();
-		const converted = processor.convert(document.getText(), {
+		const source = await getAsciiDocSource(document);
+		const converted = processor.convert(source, {
 			safe: 'safe',
 			backend: 'html5',
 			standalone: false,
-			base_dir: getBaseDir(document),
+			base_dir: getAsciiDocBaseDir(document),
 			attributes: {
 				showtitle: true,
 				sectanchors: true,
 				icons: 'font',
 				stem: 'latexmath',
 				'allow-uri-read': false,
+				...getDocumentAttributes(document),
 			},
 			extension_registry: extensionRegistry,
 		});
 
-		return rewriteSourceDiagramBlocks(rewriteLocalImageUris(String(converted), document, webview));
+		return rewriteSourceDiagramBlocks(await rewriteLocalImageUris(String(converted), document, webview));
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		trace('preview conversion failed', {
@@ -887,11 +913,25 @@ function convertAsciiDoc(document: vscode.TextDocument, webview: vscode.Webview)
 	}
 }
 
-function getBaseDir(document: vscode.TextDocument): string | undefined {
+function getAsciiDocBaseDir(document: vscode.TextDocument): string | undefined {
 	if (document.uri.scheme !== 'file') {
 		return undefined;
 	}
 
+	return getDocumentDirectory(document);
+}
+
+function getDocumentAttributes(document: vscode.TextDocument): Record<string, string> {
+	if (document.uri.scheme !== 'file') {
+		return {};
+	}
+
+	return {
+		docdir: getDocumentDirectory(document),
+	};
+}
+
+function getDocumentDirectory(document: vscode.TextDocument): string {
 	return path.dirname(document.uri.fsPath);
 }
 
@@ -899,10 +939,171 @@ function getLocalResourceRoots(extensionUri: vscode.Uri, document: vscode.TextDo
 	const roots = [extensionUri, ...(vscode.workspace.workspaceFolders?.map((folder) => folder.uri) ?? [])];
 
 	if (document.uri.scheme === 'file') {
-		roots.push(vscode.Uri.file(path.dirname(document.uri.fsPath)));
+		roots.push(vscode.Uri.file(getDocumentDirectory(document)));
 	}
 
 	return uniqueUris(roots);
+}
+
+async function getAsciiDocSource(document: vscode.TextDocument): Promise<string> {
+	const antoraContext = await getAntoraContext(document);
+	if (!antoraContext) {
+		return document.getText();
+	}
+
+	return expandAntoraIncludes(document.getText(), antoraContext, getDocumentDirectory(document), 0);
+}
+
+async function expandAntoraIncludes(source: string, context: AntoraContext, documentDirectory: string, depth: number): Promise<string> {
+	if (depth > 20) {
+		throw new Error('Antora include nesting is too deep.');
+	}
+
+	const lines = source.split(/\r?\n/);
+	const expandedLines: string[] = [];
+
+	for (const line of lines) {
+		const include = line.match(/^include::([^\[]+)\[[^\]]*\]\s*$/);
+		if (!include) {
+			expandedLines.push(line);
+			continue;
+		}
+
+		const target = include[1];
+		const includeUri = await resolveAntoraIncludeTarget(context, documentDirectory, target);
+		if (!includeUri) {
+			expandedLines.push(line);
+			continue;
+		}
+
+		const content = new TextDecoder().decode(await vscode.workspace.fs.readFile(includeUri));
+		expandedLines.push(await expandAntoraIncludes(content, context, path.dirname(includeUri.fsPath), depth + 1));
+	}
+
+	return expandedLines.join('\n');
+}
+
+async function getAntoraContext(document: vscode.TextDocument): Promise<AntoraContext | undefined> {
+	if (document.uri.scheme !== 'file') {
+		return undefined;
+	}
+
+	return findAntoraContext(document.uri.fsPath);
+}
+
+async function findAntoraContext(filePath: string): Promise<AntoraContext | undefined> {
+	let current = path.dirname(filePath);
+
+	while (current !== path.dirname(current)) {
+		if (await isAntoraComponentRoot(current) && isInsideAntoraModuleDirectory(filePath, current)) {
+			const relativePath = path.relative(path.join(current, 'modules'), filePath);
+			const [moduleName] = relativePath.split(path.sep);
+
+			return {
+				componentRoot: current,
+				moduleName,
+				moduleRoot: path.join(current, 'modules', moduleName),
+			};
+		}
+
+		current = path.dirname(current);
+	}
+
+	return undefined;
+}
+
+async function resolveAntoraResource(context: AntoraContext, target: string): Promise<vscode.Uri | undefined> {
+	const resource = parseAntoraResource(target, context.moduleName);
+	if (!resource) {
+		return undefined;
+	}
+
+	const familyDirectory = antoraFamilyDirectories[resource.family];
+	if (!familyDirectory) {
+		return undefined;
+	}
+
+	const candidate = path.resolve(context.componentRoot, 'modules', resource.moduleName, familyDirectory, resource.resourcePath);
+	if (!isPathInside(candidate, path.join(context.componentRoot, 'modules')) || !await fileExists(candidate)) {
+		return undefined;
+	}
+
+	return vscode.Uri.file(candidate);
+}
+
+async function resolveAntoraIncludeTarget(context: AntoraContext, documentDirectory: string, target: string): Promise<vscode.Uri | undefined> {
+	const resource = await resolveAntoraResource(context, target);
+	if (resource) {
+		return resource;
+	}
+
+	if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(target)) {
+		return undefined;
+	}
+
+	const candidate = path.resolve(documentDirectory, target);
+	if (!isPathInside(candidate, context.moduleRoot) || !await fileExists(candidate)) {
+		return undefined;
+	}
+
+	return vscode.Uri.file(candidate);
+}
+
+function parseAntoraResource(target: string, defaultModuleName: string): AntoraResource | undefined {
+	const familySeparatorIndex = target.indexOf('$');
+	if (familySeparatorIndex <= 0 || familySeparatorIndex === target.length - 1) {
+		return undefined;
+	}
+
+	const familyCoordinate = target.slice(0, familySeparatorIndex);
+	const resourcePath = target.slice(familySeparatorIndex + 1);
+	const familyParts = familyCoordinate.split(':');
+	const family = familyParts.pop();
+	const moduleName = familyParts.pop() ?? defaultModuleName;
+
+	if (!family || !moduleName || familyParts.length > 1 || path.isAbsolute(resourcePath) || resourcePath.split(/[\\/]/).includes('..')) {
+		return undefined;
+	}
+
+	return {
+		family,
+		moduleName,
+		resourcePath,
+	};
+}
+
+function isPathInside(candidate: string, parent: string): boolean {
+	const relativePath = path.relative(parent, candidate);
+
+	return Boolean(relativePath) && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+async function isAntoraComponentRoot(directory: string): Promise<boolean> {
+	return await fileExists(path.join(directory, 'antora.yml')) && await directoryExists(path.join(directory, 'modules'));
+}
+
+function isInsideAntoraModuleDirectory(filePath: string, componentRoot: string): boolean {
+	const relativePath = path.relative(path.join(componentRoot, 'modules'), filePath);
+
+	return Boolean(relativePath) && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+	try {
+		const stat = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+		return stat.type === vscode.FileType.File;
+	} catch {
+		return false;
+	}
+}
+
+async function directoryExists(filePath: string): Promise<boolean> {
+	try {
+		const stat = await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+		return stat.type === vscode.FileType.Directory;
+	} catch {
+		return false;
+	}
 }
 
 function uniqueUris(uris: vscode.Uri[]): vscode.Uri[] {
@@ -919,37 +1120,51 @@ function uniqueUris(uris: vscode.Uri[]): vscode.Uri[] {
 	});
 }
 
-function rewriteLocalImageUris(html: string, document: vscode.TextDocument, webview: vscode.Webview): string {
+async function rewriteLocalImageUris(html: string, document: vscode.TextDocument, webview: vscode.Webview): Promise<string> {
 	if (document.uri.scheme !== 'file') {
 		return html;
 	}
 
-	const baseDir = getBaseDir(document);
+	const baseDir = getDocumentDirectory(document);
 	if (!baseDir) {
 		return html;
 	}
 
+	const antoraContext = await getAntoraContext(document);
 	const allowedPreviewHosts = getAllowedPreviewHosts();
-
-	return html.replace(/(<img\b[^>]*\bsrc=")([^"]+)(")/gi, (_match: string, before: string, src: string, after: string) => {
+	const rewrittenImages = await Promise.all([...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gi)].map(async (match) => {
+		const src = match[1];
 		if (/^(?:https?:|ftp:|\/\/)/i.test(src)) {
 			const allowedRemoteSrc = getAllowedRemoteImageSrc(src, allowedPreviewHosts);
-			if (allowedRemoteSrc) {
-				return `${before}${allowedRemoteSrc}${after}`;
-			}
 
-			return `${before}${blockedImageUri()}${after}`;
+			return {
+				from: src,
+				to: allowedRemoteSrc ?? blockedImageUri(),
+			};
 		}
 
 		if (/^(?:[a-z][a-z0-9+.-]*:|#)/i.test(src)) {
-			return `${before}${src}${after}`;
+			return {
+				from: src,
+				to: src,
+			};
 		}
 
 		const parsed = splitUriSuffix(src);
-		const imagePath = path.resolve(baseDir, decodeURIComponent(parsed.path));
-		const webviewUri = webview.asWebviewUri(vscode.Uri.file(imagePath));
+		const decodedPath = decodeURIComponent(parsed.path);
+		const antoraImageUri = antoraContext ? await resolveAntoraResource(antoraContext, decodedPath) : undefined;
+		const imageUri = antoraImageUri ?? vscode.Uri.file(path.resolve(baseDir, decodedPath));
 
-		return `${before}${webviewUri.toString()}${parsed.suffix}${after}`;
+		return {
+			from: src,
+			to: `${webview.asWebviewUri(imageUri).toString()}${parsed.suffix}`,
+		};
+	}));
+
+	return html.replace(/(<img\b[^>]*\bsrc=")([^"]+)(")/gi, (_match: string, before: string, src: string, after: string) => {
+		const rewrittenImage = rewrittenImages.find((image) => image.from === src);
+
+		return `${before}${rewrittenImage?.to ?? src}${after}`;
 	});
 }
 
