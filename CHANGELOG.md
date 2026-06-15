@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-15
+
+- [#32](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/32) [codex] release 0.3.0
+
 ## [0.3.0] - 2026-06-15
 
 - [#30](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/30) Add configurable preview width
