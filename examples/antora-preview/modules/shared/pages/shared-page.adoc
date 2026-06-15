@@ -1,0 +1,1 @@
+This paragraph comes from `shared:page$shared-page.adoc`.

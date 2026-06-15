@@ -1,0 +1,14 @@
+= Antora Preview Sample
+
+This page exercises Antora-style resource resolution in the local preview.
+
+include::partial$intro.adoc[]
+
+include::example$snippet.adoc[]
+
+include::../partials/relative-include.adoc[]
+
+include::shared:page$shared-page.adoc[]
+
+.Antora image resource
+image::image$sample.svg[Sample Antora image,64,64]

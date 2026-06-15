@@ -1,0 +1,1 @@
+This paragraph comes from a relative include across Antora content directories.
