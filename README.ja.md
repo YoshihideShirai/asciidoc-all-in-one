@@ -62,7 +62,7 @@ AsciiDoc Zero-Network Preview は独自の `asciidoc` 言語定義や TextMate g
 
 1. VS Code で AsciiDoc ファイルを開きます。
 2. プレビューしたい `.adoc`、`.ad`、`.asciidoc`、`.asc` ファイルのエディタータブを選択します。
-3. エディタータイトルバーの <img src="media/preview-shield-light.svg" width="16" height="16" alt="Open Zero-Network Preview icon"> プレビューアイコンをクリックするか、コマンドパレットから **AsciiDoc: Open Zero-Network Preview** を実行します。
+3. エディタータイトルバーのプレビューアイコンをクリックするか、コマンドパレットから **AsciiDoc: Open Zero-Network Preview** を実行します。
 4. エディターのコンテキストメニューからもプレビューを開けます。
 
 プレビューは編集中の内容に追従します。必要な場合は **AsciiDoc: Refresh Preview** で Webview を再描画できます。
