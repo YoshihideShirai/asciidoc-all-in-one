@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-06-16
+
+- [#41](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/41) [codex] Fix VSIX packaging README SVG error
+
 ## [0.6.0] - 2026-06-16
 
 - [#38](https://github.com/YoshihideShirai/asciidoc-local-preview-vscode/pull/38) [codex] Remove unused AsciiDoc grammar
